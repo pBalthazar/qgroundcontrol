@@ -217,13 +217,34 @@ void MAVLinkProtocol::receiveBytes(LinkInterface* link, QByteArray b)
         if (decodeState == 1)
         {
             if (!link->decodedFirstMavlinkPacket()) {
+                link->setDecodedFirstMavlinkPacket(true);
                 mavlink_status_t* mavlinkStatus = mavlink_get_channel_status(mavlinkChannel);
                 if (!(mavlinkStatus->flags & MAVLINK_STATUS_FLAG_IN_MAVLINK1) && (mavlinkStatus->flags & MAVLINK_STATUS_FLAG_OUT_MAVLINK1)) {
                     qDebug() << "Switching outbound to mavlink 2.0 due to incoming mavlink 2.0 packet:" << mavlinkStatus << mavlinkChannel << mavlinkStatus->flags;
                     mavlinkStatus->flags &= ~MAVLINK_STATUS_FLAG_OUT_MAVLINK1;
-                    _current_version = 200;
+
+                    // check which links are active and MAVLink 2.0
+                    QList<LinkInterface*> links = _linkMgr->links();
+
+                    for (int i = 0; i < links.length(); i++) {
+                        mavlink_status_t* mavlinkStatus = mavlink_get_channel_status(links[i]->mavlinkChannel());
+
+                        bool active_mavlink1 = false;
+
+                        // if the link is set to MAVLink 1 and it has seen incoming traffic
+                        // flag as MAVLink 1 being active
+                        if (((mavlinkStatus->flags & MAVLINK_STATUS_FLAG_OUT_MAVLINK1) > 0)
+                            && (links[i]->decodedFirstMavlinkPacket())) {
+                            active_mavlink1 = true;
+                        }
+
+                        // there is no active MAVLink 1 connection, so we can
+                        // upgrade to MAVLink 2
+                        if (!active_mavlink1 && _current_version < 200) {
+                            _current_version = 200;
+                        }
+                    }
                 }
-                link->setDecodedFirstMavlinkPacket(true);
             }
 
             // Log data
