@@ -2765,3 +2765,24 @@ VehicleTemperatureFactGroup::VehicleTemperatureFactGroup(QObject* parent)
     _temperature2Fact.setRawValue      (std::numeric_limits<float>::quiet_NaN());
     _temperature3Fact.setRawValue      (std::numeric_limits<float>::quiet_NaN());
 }
+
+void
+Vehicle::foobar()
+{
+    qDebug() << "PARAM_EXT_SET";
+    mavlink_param_ext_set_t p;
+    memset(&p, 0, sizeof(mavlink_param_ext_set_t));
+    mavlink_message_t msg;
+    p.param_type = MAV_PARAM_TYPE_REAL32;
+    p.target_system = (uint8_t)id();
+    p.target_component = (uint8_t)MAV_COMP_ID_CAMERA;
+    strncpy(p.param_id, "CAM_EV", MAVLINK_MSG_PARAM_EXT_SET_FIELD_PARAM_ID_LEN);
+    mavlink_msg_param_ext_set_encode_chan(
+        qgcApp()->toolbox()->mavlinkProtocol()->getSystemId(),
+        qgcApp()->toolbox()->mavlinkProtocol()->getComponentId(),
+        priorityLink()->mavlinkChannel(),
+        &msg,
+        &p);
+    sendMessageOnLink(priorityLink(), msg);
+    qDebug() << "PARAM_EXT_SET Sent";
+}

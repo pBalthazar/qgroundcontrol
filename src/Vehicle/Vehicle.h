@@ -425,6 +425,8 @@ public:
 
     Q_INVOKABLE void triggerCamera(void);
 
+    Q_INVOKABLE void foobar();
+
 #if 0
     // Temporarily removed, waiting for new command implementation
     /// Test motor

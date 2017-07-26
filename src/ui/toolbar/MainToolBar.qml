@@ -111,7 +111,12 @@ Rectangle {
                 anchors.bottom:     parent.bottom
                 exclusiveGroup:     mainActionGroup
                 source:             "/qmlimages/Plan.svg"
-                onClicked:          toolBar.showPlanView()
+                //onClicked:          toolBar.showPlanView()
+                onClicked: {
+                    if(_activeVehicle) {
+                        _activeVehicle.foobar()
+                    }
+                }
             }
 
             QGCToolBarButton {

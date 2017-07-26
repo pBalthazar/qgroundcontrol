@@ -952,7 +952,7 @@ void MockLink::_sendGpsRawInt(void)
                                       UINT16_MAX, UINT16_MAX,                // HDOP/VDOP not known
                                       UINT16_MAX,                            // velocity not known
                                       UINT16_MAX,                            // course over ground not known
-                                      8);                                    // satellite count
+                                      8,0,0,0,0,0);                                    // satellite count
     respondWithMavlinkMessage(msg);
 }
 
