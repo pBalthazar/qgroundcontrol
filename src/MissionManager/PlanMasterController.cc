@@ -18,7 +18,19 @@
 #include <QJsonDocument>
 #include <QFileInfo>
 
-QGC_LOGGING_CATEGORY(PlanMasterControllerLog, "PlanMasterControllerLog")
+#include <QDateTime>
+#include <QMessageBox>
+
+#include <QFormLayout>
+#include <QTableWidget>
+#include <QInputDialog>
+#include <QLabel>
+#include <QSpinBox>
+#include <QDialogButtonBox>
+
+#include <QCalendarWidget>
+
+QGC_LOGGING_CATEGORY(PlanMasterControllerLog, "PlanMasterControllerLog");
 
 const int   PlanMasterController::_planFileVersion =            1;
 const char* PlanMasterController::_planFileType =               "Plan";
@@ -348,6 +360,175 @@ void PlanMasterController::saveToFile(const QString& filename)
     if (offline()) {
         setDirty(false);
     }
+}
+
+QJsonDocument readJson(QString path)
+{
+    QString val;
+    QFile file;
+    file.setFileName(path);
+    file.open(QIODevice::ReadOnly | QIODevice::Text);
+    val = file.readAll();
+    file.close();
+    QJsonDocument d = QJsonDocument::fromJson(val.toUtf8());
+    QJsonObject sett2 = d.object();
+    return d;
+}
+
+void writeJson(QString path, QJsonDocument jsonDoc)
+{
+    QFile file(path);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        file.write(jsonDoc.toJson());
+        file.close();
+    } else {
+        qDebug() << "File wasn't openend";
+    }
+}
+
+QJsonObject showMissionSettingsDialog(QJsonObject missionSettings) {
+    bool accepted = false;
+    QDialog dialog(0);
+    // Use a layout allowing to have a label next to each field
+    QFormLayout form(&dialog);
+
+    // Add text above the fields
+    form.addRow(new QLabel("Please enter the settings for the mission."));
+
+    QList<QLineEdit *> fields;
+
+    // Add the Speed Drone Fields
+    QSpinBox *droneSpeedSpinBox = new QSpinBox(&dialog);
+    droneSpeedSpinBox->setRange(10,100);
+    droneSpeedSpinBox->setValue(missionSettings["droneMaxSpeed"].toInt());
+    QString droneSpeedLabel = QString("Drone maximum speed (km/h) : ");
+    form.addRow(droneSpeedLabel, droneSpeedSpinBox);
+
+    // Add Autonomy fields
+    QSpinBox *droneAutonomySpinBox = new QSpinBox(&dialog);
+    droneAutonomySpinBox->setRange(10,50);
+    droneAutonomySpinBox->setValue(missionSettings["droneAutonomy"].toInt());
+    QString droneAutonomyLabel = QString("Drone autonomy (min) : ");
+    form.addRow(droneAutonomyLabel, droneAutonomySpinBox);
+
+    // Add charging fields
+    QSpinBox *droneChargingSpinBox = new QSpinBox(&dialog);
+    droneChargingSpinBox->setRange(30,100);
+    droneChargingSpinBox->setValue(missionSettings["droneChargingTime"].toInt());
+    QString droneChargingTimeLabel = QString("Drone charging time (min.) : ");
+    form.addRow(droneChargingTimeLabel, droneChargingSpinBox);
+
+    // Add charging efficiency fields
+    QSpinBox *droneChargingEfficiencySpinBox = new QSpinBox(&dialog);
+    droneChargingEfficiencySpinBox->setRange(0,100);
+    droneChargingEfficiencySpinBox->setValue(missionSettings["droneChargeEfficiency"].toInt());
+    QString droneChargingEfficiencyLabel = QString("Drone charging efficiency (%) : ");
+    form.addRow(droneChargingEfficiencyLabel, droneChargingEfficiencySpinBox);
+
+    // Add buttons (Cancel/Ok) at the bottom of the dialog
+    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                               Qt::Horizontal, &dialog);
+    form.addRow(&buttonBox);
+    QObject::connect(&buttonBox, SIGNAL(accepted()), &dialog, SLOT(accept()));
+    QObject::connect(&buttonBox, SIGNAL(rejected()), &dialog, SLOT(reject()));
+
+    // Show the dialog as modal
+
+    int dialogCode = dialog.exec();
+    if (dialogCode == QDialog::Accepted) {
+        // If the user didn't dismiss the dialog, do something with the fields
+
+        missionSettings["droneAutonomy"] = droneAutonomySpinBox->value();
+        missionSettings["droneMaxSpeed"] = droneSpeedSpinBox->value();
+        missionSettings["droneChargingTime"] = droneChargingSpinBox->value();
+        missionSettings["droneChargeEfficiency"] = droneChargingEfficiencySpinBox->value();
+        missionSettings["accept"] = true;
+        accepted = true;
+    } else if (dialogCode == QDialog::Rejected)
+    {
+        missionSettings["accept"] = false;
+    }
+    return missionSettings;
+}
+
+void PlanMasterController::startCustomCode(void)
+{
+    QString missionPlanner, python;
+    QMessageBox msgBox;
+    QString errorString;
+
+    // Filenames in the form of current date and time
+    QDateTime now = QDateTime::currentDateTime();
+    QString fileOriginalPlan = tr(qgcApp()->toolbox()->settingsManager()->appSettings()->missionSavePath().toUtf8().constData())
+                        + QString("/") + now.toString("yyyy-MM-dd_HH-mm")
+                        + QString(".") + tr( AppSettings::planFileExtension);
+
+    QString fileGeneratedPlan = tr(qgcApp()->toolbox()->settingsManager()->appSettings()->missionSavePath().toUtf8().constData())
+                        + QString("/") + now.toString("yyyy-MM-dd_HH-mm") + QString("_generated")
+                        + QString(".") + tr( AppSettings::planFileExtension);
+   PlanMasterController::saveToFile(fileOriginalPlan);
+
+    // Start a process and the console output will be at the parent environment
+    QProcess *scriptsProc = new QProcess(parent());
+    scriptsProc->setProcessChannelMode(QProcess::ForwardedOutputChannel);
+
+#if defined (__macos__)
+    missionPlanner = qgcApp()->applicationDirPath().toUtf8() + "/../../../../../MissionOptimizer";
+    python = "/usr/local/bin/python3";
+#else
+    missionPlanner = qgcApp()->applicationDirPath().toUtf8() + "/../../MissionOptimizer";
+    python = "/usr/bin/python3";
+#endif
+
+    scriptsProc->setWorkingDirectory(missionPlanner);
+
+    // Read mission settings from JSON file and transfer into JSON obj
+    QJsonDocument missionSettings = readJson(missionPlanner + "/missionSettings.json");
+    QJsonObject missionSettingsObj(missionSettings.object());
+
+    // Popup setting dialog
+    QJsonObject newMissionSettings = showMissionSettingsDialog(missionSettingsObj);
+
+    if (!newMissionSettings["accept"].toBool()) {
+        return;
+    }
+
+    // Transfer new settings JSON obj into JSON doc and overwrite the file
+    QJsonDocument missionSettingsDoc(newMissionSettings);
+    writeJson(missionPlanner + "/missionSettings.json", missionSettingsDoc);
+
+    // Transfer settings JSON doc into compacted string to pass in args
+    QString missionSettingsStr(missionSettingsDoc.toJson(QJsonDocument::Compact));
+
+    // Start MissionPlanner script with waypoints as args
+    QStringList params = QStringList() << missionPlanner + "/main.py" << fileOriginalPlan << fileGeneratedPlan << missionSettingsStr;
+    scriptsProc->start(python, params);
+
+    if (!scriptsProc->waitForStarted(5000))
+        errorString = "The script didn't start under the reserved time.";
+
+    if (!scriptsProc->waitForFinished(30000))
+        errorString = "The script didn't finish under the reserved time.";
+    else
+        errorString = scriptsProc->readAllStandardError();
+    scriptsProc->close();
+
+    if(scriptsProc->exitCode() == QProcess::NormalExit)
+    {
+        PlanMasterController::loadFromFile(fileGeneratedPlan);
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setText("Success while executing external scripts!");
+        //msgBox.exec();
+    }
+    else
+    {
+        if (errorString.isEmpty())
+            msgBox.critical(0,"Error","Unhandled error.");
+        else
+            msgBox.critical(0,"Error",errorString);
+    }
+
+    delete scriptsProc;
 }
 
 void PlanMasterController::removeAll(void)

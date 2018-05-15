@@ -46,7 +46,7 @@
         <file alias="Airframe/HelicopterCoaxial">src/AutoPilotPlugins/Common/Images/HelicopterCoaxial.svg</file>
         <file alias="wifi.svg">src/AutoPilotPlugins/Common/Images/wifi.svg</file>
         <file alias="arrow-down.png">src/QmlControls/arrow-down.png</file>
-		<file alias="camera.svg">resources/camera.svg</file>
+        <file alias="camera.svg">resources/camera.svg</file>
         <file alias="check.png">src/QmlControls/check.png</file>
         <file alias="FirmwareUpgradeIcon.png">src/VehicleSetup/FirmwareUpgradeIcon.png</file>
         <file alias="FlightModesComponentIcon.png">src/AutoPilotPlugins/PX4/Images/FlightModesComponentIcon.png</file>
@@ -166,6 +166,10 @@
         <file alias="APM/BrandImage">src/FirmwarePlugin/APM/APMBrandImage.png</file>
         <file alias="APM/BrandImageSub">src/FirmwarePlugin/APM/APMBrandImageSub.png</file>
         <file alias="PX4/BrandImage">src/FirmwarePlugin/PX4/PX4BrandImage.png</file>
+        <file alias="spinner.svg">src/FlightMap/Images/spinner.svg</file>
+        <file alias="map-route.svg">src/FlightMap/Images/map-route.svg</file>
+        <file alias="map-route_black.svg">src/FlightMap/Images/map-route_black.svg</file>
+        <file alias="optimizeRoute2.svg">src/FlightMap/Images/optimizeRoute2.svg</file>
     </qresource>
     <qresource prefix="/res">
         <file alias="action.svg">resources/action.svg</file>
@@ -187,7 +191,7 @@
         <file alias="Play">resources/Play.svg</file>
         <file alias="PowerButton">resources/PowerButton.svg</file>
         <file alias="QGCLogoBlack">resources/QGCLogoBlack.svg</file>
-		<file alias="QGCLogoFull">resources/QGCLogoFull.svg</file>
+        <file alias="QGCLogoFull">resources/QGCLogoFull.svg</file>
         <file alias="QGCLogoWhite">resources/QGCLogoWhite.svg</file>
         <file alias="QGroundControlConnect">resources/QGroundControlConnect.svg</file>
         <file alias="rtl.svg">resources/rtl.svg</file>
@@ -321,4 +325,5 @@
         <file alias="joystickYawLeft.png">resources/calibration/joystick/mode4/joystickYawLeft.png</file>
         <file alias="joystickYawRight.png">resources/calibration/joystick/mode4/joystickYawRight.png</file>
     </qresource>
+    <qresource prefix="/"/>
 </RCC>
